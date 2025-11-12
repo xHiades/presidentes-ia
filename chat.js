@@ -1,4 +1,4 @@
-// netlify/functions/chat.js
+// netlify/functions/chat.js (versión con mensaje de error más detallado)
 
 exports.handler = async (event, context) => {
   // CORS básico por las dudas
@@ -67,20 +67,34 @@ exports.handler = async (event, context) => {
       })
     });
 
+    const text = await response.text();
     if (!response.ok) {
-      const text = await response.text();
       console.error("Error desde OpenAI:", response.status, text);
       return {
         statusCode: 500,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          error: "La API de OpenAI devolvió un error.",
+          error: "La API de OpenAI devolvió un error: " + text,
           status: response.status
         })
       };
     }
 
-    const data = await response.json();
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("No se pudo parsear JSON de OpenAI:", e, text);
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: "No se pudo interpretar la respuesta de OpenAI.",
+          status: response.status
+        })
+      };
+    }
+
     const answer =
       data.choices &&
       data.choices[0] &&
